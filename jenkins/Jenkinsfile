@@ -1,30 +1,34 @@
-pipeline {
-    agent {
-        docker {
-            image 'node:lts-buster-slim'
-            args '-p 3000:3000'
-        }
+node {
+    env.CI = 'true'
+    env.NODE_OPTIONS = '--openssl-legacy-provider'
+
+    stage('Checkout') {
+        checkout scm
     }
-    environment {
-        CI = 'true'
+
+    stage('Build') {
+        sh '''
+            npm install
+            npm run build 2>&1 | tee build.log
+        '''
     }
-    stages {
-        stage('Build') {
-            steps {
-                sh 'npm install'
-            }
-        }
-        stage('Test') {
-            steps {
-                sh './jenkins/scripts/test.sh'
-            }
-        }
-        stage('Deliver') {
-            steps {
-                sh './jenkins/scripts/deliver.sh'
-                input message: 'Finished using the website? (Click "Proceed" to continue)'
-                sh './jenkins/scripts/kill.sh'
-            }
-        }
+
+    stage('Test') {
+        sh '''
+            npm test -- --watchAll=false 2>&1 | tee test.log
+        '''
+    }
+
+    stage('Archive') {
+        sh '''
+            {
+              echo "=== Build Log ==="
+              cat build.log
+              echo
+              echo "=== Test Log ==="
+              cat test.log
+            } > log.txt
+        '''
+        archiveArtifacts artifacts: 'log.txt', fingerprint: true
     }
 }
