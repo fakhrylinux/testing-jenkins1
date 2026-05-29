@@ -1,6 +1,8 @@
 node {
     env.CI = 'true'
     env.NODE_OPTIONS = '--openssl-legacy-provider'
+    env.APP_IMAGE = 'react-app-cicd-aqilaziz:latest'
+    env.APP_CONTAINER = 'react-app-cicd-aqilaziz'
 
     stage('Checkout') {
         checkout scm
@@ -19,6 +21,28 @@ node {
         '''
     }
 
+    stage('Manual Approval') {
+        timeout(time: 5, unit: 'MINUTES') {
+            input id: 'DeployApproval', message: 'Lanjutkan ke tahap Deploy?', ok: 'Proceed'
+        }
+    }
+
+    stage('Deploy') {
+        sh '''
+            set +e
+            docker rm -f "$APP_CONTAINER" >/dev/null 2>&1
+            set -e
+
+            docker build -t "$APP_IMAGE" -f Dockerfile.app . 2>&1 | tee deploy.log
+            docker run -d --name "$APP_CONTAINER" -p 3000:80 "$APP_IMAGE" 2>&1 | tee -a deploy.log
+            echo "React App running on http://localhost:3000 for 60 seconds." | tee -a deploy.log
+            sleep 60
+            docker logs "$APP_CONTAINER" 2>&1 | tee -a deploy.log || true
+            docker rm -f "$APP_CONTAINER" 2>&1 | tee -a deploy.log
+            echo "Deploy stage finished successfully after 60 seconds." | tee -a deploy.log
+        '''
+    }
+
     stage('Archive') {
         sh '''
             {
@@ -27,6 +51,9 @@ node {
               echo
               echo "=== Test Log ==="
               cat test.log
+              echo
+              echo "=== Deploy Log ==="
+              cat deploy.log
             } > log.txt
         '''
         archiveArtifacts artifacts: 'log.txt', fingerprint: true
