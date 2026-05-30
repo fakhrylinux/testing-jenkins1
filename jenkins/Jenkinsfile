@@ -1,8 +1,4 @@
 node {
-    env.CI = 'true'
-    env.NODE_OPTIONS = '--openssl-legacy-provider'
-    env.APP_IMAGE = 'react-app-cicd-aqilaziz:latest'
-    env.APP_CONTAINER = 'react-app-cicd-aqilaziz'
 
     docker.image('node:16-buster-slim').inside('-p 3000:3000') {
         stage('Checkout') {
