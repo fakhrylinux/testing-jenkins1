@@ -4,9 +4,10 @@ node {
     env.APP_IMAGE = 'react-app-cicd-aqilaziz:latest'
     env.APP_CONTAINER = 'react-app-cicd-aqilaziz'
 
-    stage('Checkout') {
-        checkout scm
-    }
+    docker.image('node:16-buster-slim').inside('-p 3000:3000') {
+        stage('Checkout') {
+            checkout scm
+        }
 
     stage('Build') {
         sh '''
@@ -58,4 +59,6 @@ node {
         '''
         archiveArtifacts artifacts: 'log.txt', fingerprint: true
     }
+    }
+
 }
